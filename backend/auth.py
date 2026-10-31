@@ -38,6 +38,33 @@ def require_fields(payload, fields):
     return None
 
 
+def normalize_role(value):
+    if value is None:
+        return None
+    if isinstance(value, UserRole):
+        return value
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    lookup = {
+        "ADMIN": UserRole.ADMIN,
+        "CUSTOMER": UserRole.CUSTOMER,
+        "INTERNAL": UserRole.INTERNAL,
+        "INTERNAL_STAFF": UserRole.INTERNAL,
+        "STAFF": UserRole.INTERNAL,
+        "PRODUCT_OWNER": UserRole.INTERNAL,
+        "PRODUCT-OWNER": UserRole.INTERNAL,
+        "PRODUCT OWNER": UserRole.INTERNAL,
+    }
+    key = text.upper().replace("-", "_").replace(" ", "_")
+    role = lookup.get(key)
+    if role is None:
+        raise ValueError(f"Unsupported role: {value}")
+    return role
+
+
 def send_reset_email(user, raw_token):
     reset_url = f"{current_app.config['FRONTEND_URL']}/reset-password?token={raw_token}"
     subject = "Reset your Brightloop password"
@@ -103,8 +130,13 @@ def register():
     password = payload["password"]
     confirm_password = payload["confirm_password"]
 
-    if payload.get("role"):
-        return json_error("Role cannot be set during public registration.")
+    try:
+        role = normalize_role(payload.get("role", UserRole.CUSTOMER.value))
+    except ValueError as exc:
+        return json_error(str(exc), 400)
+
+    if role not in {UserRole.CUSTOMER, UserRole.INTERNAL, UserRole.ADMIN}:
+        return json_error("Unsupported role. Choose Customer, Internal Staff, or Admin.", 400)
 
     if "@" not in email or "." not in email.split("@")[-1]:
         return json_error("Enter a valid email address.")
@@ -122,7 +154,7 @@ def register():
         full_name=full_name,
         email=email,
         password_hash=hash_password(password),
-        role=UserRole.CUSTOMER,
+        role=role,
     )
     db.session.add(user)
     try:
@@ -276,9 +308,7 @@ def create_product_owner():
 def role_home(role):
     value = role.value if isinstance(role, UserRole) else role
     if value == UserRole.ADMIN.value:
-        return "/?view=admin"
-    if value == UserRole.PRODUCT_OWNER.value:
-        return "/?view=staff"
-    if value == UserRole.INTERNAL.value:
-        return "/?view=staff"
-    return "/?view=customer"
+        return "/dashboard/admin"
+    if value in {UserRole.PRODUCT_OWNER.value, UserRole.INTERNAL.value}:
+        return "/dashboard/staff"
+    return "/dashboard/customer"

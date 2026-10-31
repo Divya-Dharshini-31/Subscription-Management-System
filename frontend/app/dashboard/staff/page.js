@@ -548,7 +548,7 @@ export default function StaffDashboard() {
         onTabChange={setActiveTab}
         title={PAGE_TITLE[activeTab]}
         user={user}
-        roleBadge={user?.role === "ADMIN" ? "Administrator" : user?.role === "INTERNAL" ? "Internal Staff" : "Product Owner"}
+        roleBadge={user?.role === "ADMIN" ? "Administrator" : user?.role === "INTERNAL" || user?.role === "PRODUCT_OWNER" ? "Internal Staff" : "Customer"}
         topbarRight={
           <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, background: "rgba(29,78,216,0.08)", color: "#1d4ed8", padding: "5px 12px", borderRadius: 20 }}>
             <Briefcase size={13} /> Staff

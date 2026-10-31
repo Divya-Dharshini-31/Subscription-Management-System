@@ -60,11 +60,18 @@ def test_duplicate_email_rejected(client):
     assert "already exists" in response.get_json()["error"]
 
 
-def test_public_registration_cannot_set_privileged_role(client):
-    response = register(client, email="sneaky@example.com", role="ADMIN")
-    assert response.status_code == 400
-    response = register(client, email="sneaky2@example.com", role="PRODUCT_OWNER")
-    assert response.status_code == 400
+def test_public_registration_allows_selected_role(client):
+    response = register(client, email="admin-role@example.com", role="ADMIN")
+    assert response.status_code == 201
+    assert response.get_json()["user"]["role"] == "ADMIN"
+
+    response = register(client, email="staff-role@example.com", role="INTERNAL")
+    assert response.status_code == 201
+    assert response.get_json()["user"]["role"] == "INTERNAL"
+
+    response = register(client, email="customer-role@example.com", role="CUSTOMER")
+    assert response.status_code == 201
+    assert response.get_json()["user"]["role"] == "CUSTOMER"
 
 
 def test_login_sets_jwt_cookie_with_expected_claims(client, app):
@@ -80,7 +87,7 @@ def test_login_sets_jwt_cookie_with_expected_claims(client, app):
     assert payload["role"] == "CUSTOMER"
     assert "iat" in payload
     assert "exp" in payload
-    assert response.get_json()["redirect"] == "/?view=customer"
+    assert response.get_json()["redirect"] == "/dashboard/customer"
 
 
 def test_me_requires_auth(client):

@@ -40,12 +40,12 @@ def test_customer_login_redirect_and_me(client, app):
     assert res.status_code == 200
     data = res.get_json()
     assert data["user"]["role"] == "CUSTOMER"
-    assert data["redirect"] == "/?view=customer"
+    assert data["redirect"] == "/dashboard/customer"
 
     me = client.get("/api/auth/me")
     assert me.status_code == 200
     assert me.get_json()["user"]["role"] == "CUSTOMER"
-    assert me.get_json()["redirect"] == "/?view=customer"
+    assert me.get_json()["redirect"] == "/dashboard/customer"
 
 
 def test_internal_staff_login_redirect_and_me(client, app):
@@ -54,12 +54,12 @@ def test_internal_staff_login_redirect_and_me(client, app):
     assert res.status_code == 200
     data = res.get_json()
     assert data["user"]["role"] == "INTERNAL"
-    assert data["redirect"] == "/?view=staff"
+    assert data["redirect"] == "/dashboard/staff"
 
     me = client.get("/api/auth/me")
     assert me.status_code == 200
     assert me.get_json()["user"]["role"] == "INTERNAL"
-    assert me.get_json()["redirect"] == "/?view=staff"
+    assert me.get_json()["redirect"] == "/dashboard/staff"
 
 
 def test_legacy_product_owner_login_redirect_and_me(client, app):
@@ -68,12 +68,12 @@ def test_legacy_product_owner_login_redirect_and_me(client, app):
     assert res.status_code == 200
     data = res.get_json()
     assert data["user"]["role"] == "PRODUCT_OWNER"
-    assert data["redirect"] == "/?view=staff"
+    assert data["redirect"] == "/dashboard/staff"
 
     me = client.get("/api/auth/me")
     assert me.status_code == 200
     assert me.get_json()["user"]["role"] == "PRODUCT_OWNER"
-    assert me.get_json()["redirect"] == "/?view=staff"
+    assert me.get_json()["redirect"] == "/dashboard/staff"
 
 
 def test_admin_login_redirect_and_me(client, app):
@@ -82,12 +82,12 @@ def test_admin_login_redirect_and_me(client, app):
     assert res.status_code == 200
     data = res.get_json()
     assert data["user"]["role"] == "ADMIN"
-    assert data["redirect"] == "/?view=admin"
+    assert data["redirect"] == "/dashboard/admin"
 
     me = client.get("/api/auth/me")
     assert me.status_code == 200
     assert me.get_json()["user"]["role"] == "ADMIN"
-    assert me.get_json()["redirect"] == "/?view=admin"
+    assert me.get_json()["redirect"] == "/dashboard/admin"
 
 
 def test_customer_accesses_internal_staff_api_denied(client, app):
@@ -167,7 +167,7 @@ def test_logout_and_login_with_another_role(client, app):
     client.post("/api/auth/login", json={"email": "admin@example.com", "password": PASSWORD})
     me_admin = client.get("/api/auth/me").get_json()
     assert me_admin["user"]["role"] == "ADMIN"
-    assert me_admin["redirect"] == "/?view=admin"
+    assert me_admin["redirect"] == "/dashboard/admin"
 
 
 def test_refresh_dashboard_authenticated_session_remains(client, app):
@@ -178,7 +178,7 @@ def test_refresh_dashboard_authenticated_session_remains(client, app):
         res = client.get("/api/auth/me")
         assert res.status_code == 200
         assert res.get_json()["user"]["email"] == "staff@example.com"
-        assert res.get_json()["redirect"] == "/?view=staff"
+        assert res.get_json()["redirect"] == "/dashboard/staff"
 
 
 def test_create_admin_cli_and_reset(app):

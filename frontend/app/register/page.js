@@ -14,6 +14,7 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirm_password: "",
+    role: "CUSTOMER",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,6 +39,7 @@ export default function RegisterPage() {
           email: form.email,
           password: form.password,
           confirm_password: form.confirm_password,
+          role: form.role,
         },
       });
       router.push("/login");
@@ -51,7 +53,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Public registration creates a CUSTOMER account. Admin and product owner accounts are not available here."
+      subtitle="Create your Brightloop account and choose the role that matches your access needs."
       footer={
         <p>
           Already registered?{" "}
@@ -98,18 +100,20 @@ export default function RegisterPage() {
         />
         <div className="mb-4">
           <label className="block text-sm font-medium text-ink mb-1">
-            Account Type
+            Role
           </label>
           <select
             name="role"
-            value="CUSTOMER"
-            disabled
-            className="w-full px-3 py-2 border border-stone/20 rounded-lg bg-stone/5 text-ink/80 cursor-not-allowed focus:outline-none"
+            value={form.role}
+            onChange={update}
+            className="w-full px-3 py-2 border border-stone/20 rounded-lg bg-white text-ink/80 focus:outline-none focus:ring-2 focus:ring-moss/20"
           >
-            <option value="CUSTOMER">Customer (Public self-registration)</option>
+            <option value="CUSTOMER">Customer</option>
+            <option value="INTERNAL">Internal Staff</option>
+            <option value="ADMIN">Admin</option>
           </select>
           <p className="mt-1 text-xs text-ink/55">
-            Public registration creates a CUSTOMER account. Admin and Internal Staff accounts are provisioned securely by system administrators.
+            Choose the role that best matches your Brightloop access.
           </p>
         </div>
         <p className="mb-4 text-xs leading-5 text-ink/55">
