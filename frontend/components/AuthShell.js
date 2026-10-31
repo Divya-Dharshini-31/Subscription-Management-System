@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LoaderCircle } from "lucide-react";
 
 export default function AuthShell({ title, subtitle, children, footer }) {
   return (
@@ -79,8 +80,9 @@ export function SubmitButton({ loading, children }) {
     <button
       type="submit"
       disabled={loading}
-      className="mt-2 w-full rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-moss disabled:cursor-not-allowed disabled:opacity-60"
+      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-moss disabled:cursor-not-allowed disabled:opacity-60"
     >
+      {loading ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
       {loading ? "Please wait..." : children}
     </button>
   );

@@ -43,7 +43,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Public registration creates a CUSTOMER account. Admin and staff accounts are not available here."
+      subtitle="Public registration creates a CUSTOMER account. Admin and product owner accounts are not available here."
       footer={
         <p>
           Already registered?{" "}

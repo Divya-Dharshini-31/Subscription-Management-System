@@ -14,7 +14,9 @@ export async function apiRequest(path, { method = "GET", body } = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data.error || "Something went wrong. Please try again.");
+    const error = new Error(data.error || "Something went wrong. Please try again.");
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -22,16 +24,16 @@ export async function apiRequest(path, { method = "GET", body } = {}) {
 
 export function roleLabel(role) {
   if (role === "ADMIN") return "Administrator";
-  if (role === "STAFF") return "Staff";
+  if (role === "PRODUCT_OWNER") return "Product owner";
   return "Customer";
 }
 
 export function roleCopy(role) {
   if (role === "ADMIN") {
-    return "You have full administrative access, including creating staff accounts.";
+    return "You have full administrative access, including creating product owner accounts.";
   }
-  if (role === "STAFF") {
-    return "You have access to day-to-day operations. Customer records stay scoped to your work.";
+  if (role === "PRODUCT_OWNER") {
+    return "You have access to product-owner operations. Customer data stays scoped to your work.";
   }
   return "You can view and manage your own account information only.";
 }

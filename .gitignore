@@ -17,6 +17,13 @@ node_modules/
 .next/
 out/
 
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+backend/instance/
+!backend/instance/.gitkeep
+
 # OS / IDE
 .DS_Store
 Thumbs.db

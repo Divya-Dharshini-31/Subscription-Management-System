@@ -1,8 +1,9 @@
-"""Create the first ADMIN account. Credentials are never hardcoded.
+"""Create privileged Brightloop accounts. Credentials are never hardcoded.
 
 Examples:
   python create_admin.py
   python create_admin.py --name "Ada Admin" --email ada@brightloop.local
+  python create_admin.py --role PRODUCT_OWNER --name "Pat Owner" --email pat@brightloop.local
 """
 
 import argparse
@@ -13,12 +14,22 @@ from app import create_app
 from models import User, UserRole, db
 from security import hash_password, normalize_email, validate_password
 
+PRIVILEGED_ROLES = (UserRole.ADMIN, UserRole.PRODUCT_OWNER)
+
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Create the first Brightloop ADMIN account.")
+    parser = argparse.ArgumentParser(
+        description="Create a privileged Brightloop account (ADMIN or PRODUCT_OWNER)."
+    )
     parser.add_argument("--name", help="Full name")
-    parser.add_argument("--email", help="Admin email")
-    parser.add_argument("--password", help="Admin password (prefer a prompt instead)")
+    parser.add_argument("--email", help="Account email")
+    parser.add_argument("--password", help="Account password (prefer a prompt instead)")
+    parser.add_argument(
+        "--role",
+        default=UserRole.ADMIN.value,
+        choices=[role.value for role in PRIVILEGED_ROLES],
+        help="Privileged role to create (default: ADMIN)",
+    )
     return parser.parse_args()
 
 
@@ -43,13 +54,15 @@ def prompt_password(current):
 
 def main():
     args = parse_args()
+    role = UserRole(args.role)
     app = create_app()
 
     with app.app_context():
-        existing = User.query.filter_by(role=UserRole.ADMIN).first()
-        if existing:
-            print(f"An ADMIN account already exists ({existing.email}).")
-            sys.exit(1)
+        if role is UserRole.ADMIN:
+            existing = User.query.filter_by(role=UserRole.ADMIN).first()
+            if existing:
+                print(f"An ADMIN account already exists ({existing.email}).")
+                sys.exit(1)
 
         full_name = prompt("Full name", args.name)
         email = normalize_email(prompt("Email", args.email))
@@ -64,15 +77,15 @@ def main():
             print(hint)
             sys.exit(1)
 
-        admin = User(
+        user = User(
             full_name=full_name,
             email=email,
             password_hash=hash_password(password),
-            role=UserRole.ADMIN,
+            role=role,
         )
-        db.session.add(admin)
+        db.session.add(user)
         db.session.commit()
-        print(f"ADMIN account created for {admin.email}.")
+        print(f"{role.value} account created for {user.email}.")
 
 
 if __name__ == "__main__":

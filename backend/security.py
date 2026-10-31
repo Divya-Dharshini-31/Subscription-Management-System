@@ -41,13 +41,14 @@ def normalize_email(email):
     return (email or "").strip().lower()
 
 
-def create_access_token(user):
+def create_access_token(user, expires_delta=None):
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": user.id,
         "role": user.role.value if isinstance(user.role, UserRole) else user.role,
-        "exp": datetime.now(timezone.utc)
-        + timedelta(hours=current_app.config["JWT_EXPIRY_HOURS"]),
-        "iat": datetime.now(timezone.utc),
+        "iat": now,
+        "exp": now
+        + (expires_delta or timedelta(hours=current_app.config["JWT_EXPIRY_HOURS"])),
     }
     return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
 
@@ -111,6 +112,7 @@ def login_required(fn):
             return jsonify({"error": "Account not found."}), 401
 
         g.current_user = user
+        g.jwt_payload = payload
         return fn(*args, **kwargs)
 
     return wrapper
@@ -123,7 +125,12 @@ def roles_required(*roles):
         @wraps(fn)
         @login_required
         def wrapper(*args, **kwargs):
-            if g.current_user.role.value not in allowed:
+            current_role = (
+                g.current_user.role.value
+                if isinstance(g.current_user.role, UserRole)
+                else g.current_user.role
+            )
+            if current_role not in allowed:
                 return jsonify({"error": "You do not have permission to do that."}), 403
             return fn(*args, **kwargs)
 

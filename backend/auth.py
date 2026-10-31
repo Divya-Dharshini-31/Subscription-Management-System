@@ -81,6 +81,9 @@ def register():
     password = payload["password"]
     confirm_password = payload["confirm_password"]
 
+    if payload.get("role"):
+        return json_error("Role cannot be set during public registration.")
+
     if "@" not in email or "." not in email.split("@")[-1]:
         return json_error("Enter a valid email address.")
     if password != confirm_password:
@@ -211,9 +214,9 @@ def reset_password():
     return jsonify({"message": "Password updated. You can now log in."})
 
 
-@auth_bp.post("/staff")
+@auth_bp.post("/product-owners")
 @roles_required(UserRole.ADMIN)
-def create_staff():
+def create_product_owner():
     payload = request.get_json(silent=True) or {}
     error = require_fields(payload, ["full_name", "email", "password", "confirm_password"])
     if error:
@@ -231,26 +234,26 @@ def create_staff():
     if User.query.filter_by(email=email).first():
         return json_error("An account with this email already exists.", 409)
 
-    staff = User(
+    owner = User(
         full_name=payload["full_name"].strip(),
         email=email,
         password_hash=hash_password(password),
-        role=UserRole.STAFF,
+        role=UserRole.PRODUCT_OWNER,
     )
-    db.session.add(staff)
+    db.session.add(owner)
     try:
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
         return json_error("An account with this email already exists.", 409)
 
-    return jsonify({"message": "Staff account created.", "user": staff.to_dict()}), 201
+    return jsonify({"message": "Product owner account created.", "user": owner.to_dict()}), 201
 
 
 def role_home(role):
     value = role.value if isinstance(role, UserRole) else role
     if value == UserRole.ADMIN.value:
         return "/?view=admin"
-    if value == UserRole.STAFF.value:
-        return "/?view=staff"
+    if value == UserRole.PRODUCT_OWNER.value:
+        return "/?view=product-owner"
     return "/?view=customer"

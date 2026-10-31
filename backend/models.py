@@ -1,15 +1,26 @@
 import enum
+import sqlite3
 from datetime import datetime, timezone
 
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 db = SQLAlchemy()
 
 
+@event.listens_for(Engine, "connect")
+def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+
 class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
-    STAFF = "STAFF"
     CUSTOMER = "CUSTOMER"
+    PRODUCT_OWNER = "PRODUCT_OWNER"
 
 
 class User(db.Model):
@@ -19,7 +30,11 @@ class User(db.Model):
     full_name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.CUSTOMER)
+    role = db.Column(
+        db.Enum(UserRole, native_enum=False, length=32),
+        nullable=False,
+        default=UserRole.CUSTOMER,
+    )
     created_at = db.Column(
         db.DateTime(timezone=True),
         nullable=False,

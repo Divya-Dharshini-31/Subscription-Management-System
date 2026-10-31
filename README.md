@@ -4,9 +4,10 @@ A platform for managing subscription lifecycles. This repository currently inclu
 
 ## Stack
 
-- Frontend: Next.js (App Router), JavaScript, Tailwind CSS
+- Frontend: Next.js (App Router), JavaScript, Tailwind CSS, Lucide React
 - Backend: Python Flask, REST APIs
-- Database: PostgreSQL (`brightloop_db`) with SQLAlchemy
+- Database: SQLite (`backend/instance/brightloop.db`) with SQLAlchemy
+- Authentication: JWT (HS256), stored in an httpOnly cookie
 
 ## Project layout
 
@@ -14,31 +15,48 @@ A platform for managing subscription lifecycles. This repository currently inclu
 backend/                 Flask API
   app.py               App factory, CORS, health check
   auth.py              Auth routes
-  config.py            Environment-based settings
+  config.py            Environment-based settings (SQLite path)
   models.py            User and password-reset tables
-  security.py          Hashing, JWT cookies, password rules
-  create_admin.py      Bootstrap the first ADMIN account
+  security.py          Hashing, JWT, password rules, role decorators
+  create_admin.py      Bootstrap ADMIN or PRODUCT_OWNER accounts
+  instance/            Local SQLite file (created on first run)
+  tests/               Auth API tests
 frontend/               Next.js app
   app/login
   app/register
   app/forgot-password
   app/reset-password
-  app/page.js          Signed-in landing (logout + ADMIN staff creation)
+  app/page.js          Signed-in landing (logout + ADMIN product-owner creation)
 ```
 
-Public registration always creates a **CUSTOMER** account. ADMIN and STAFF cannot be created from `/register`. STAFF accounts can be created by a signed-in ADMIN. The first ADMIN is created with `python create_admin.py` so credentials are never hardcoded.
+Public registration always creates a **CUSTOMER** account. ADMIN and PRODUCT_OWNER cannot be created from `/register`. An ADMIN can create PRODUCT_OWNER accounts. The first ADMIN is created with `python create_admin.py` so credentials are never hardcoded.
+
+## Roles
+
+- `ADMIN` — full administrative access, including creating product owners
+- `PRODUCT_OWNER` — limited operational access
+- `CUSTOMER` — own account only
+
+Protected APIs use `login_required` and `roles_required`. Authorization uses the verified JWT, then the user record in the database. A role sent by the frontend is never trusted.
+
+## JWT and logout
+
+Login issues a signed JWT with `sub` (user id), `role`, `iat`, and `exp`. The browser stores it in an **httpOnly** `access_token` cookie. `Authorization: Bearer <token>` is also accepted.
+
+**Logout clears the cookie.** It does not keep a server-side denylist. A copied token stays valid until it expires. That matches this stateless JWT setup.
+
+## Database notes
+
+The app uses SQLite. Tables are created with `db.create_all()` on startup (missing tables only; nothing is dropped).
+
+If you previously configured PostgreSQL, those records are **not** copied into SQLite. Start with a new local file at `backend/instance/brightloop.db`, then recreate accounts (including the first admin).
 
 ## Prerequisites
 
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL
 
-Create the database before starting the API:
-
-```sql
-CREATE DATABASE brightloop_db;
-```
+PostgreSQL is not required.
 
 ## Backend
 
@@ -55,7 +73,7 @@ copy .env.example .env   # Windows
 # cp .env.example .env   # macOS / Linux
 ```
 
-Edit `.env` with your PostgreSQL username, password, and a strong `SECRET_KEY`. Use the `postgresql+psycopg://` URL scheme so SQLAlchemy uses the psycopg 3 driver.
+Set a strong `SECRET_KEY` in `.env`. You can omit `DATABASE_URL`; the API still uses `backend/instance/brightloop.db` regardless of the current directory.
 
 Start the API:
 
@@ -63,12 +81,13 @@ Start the API:
 python app.py
 ```
 
-The API listens on `http://localhost:5000`. Tables are created automatically on startup.
+The API listens on `http://localhost:5000`.
 
-### Create the first admin
+### Create privileged accounts
 
 ```bash
 python create_admin.py
+python create_admin.py --role PRODUCT_OWNER
 ```
 
 You will be prompted for name, email, and password. The password must be more than 8 characters and include uppercase, lowercase, and a special character.
@@ -78,15 +97,24 @@ You will be prompted for name, email, and password. The password must be more th
 | Method | Path | Description |
 | --- | --- | --- |
 | POST | `/api/auth/register` | Customer sign up |
-| POST | `/api/auth/login` | Email/password login |
-| POST | `/api/auth/logout` | Clear session cookie |
-| GET | `/api/auth/me` | Current user |
+| POST | `/api/auth/login` | Email/password login; sets JWT cookie |
+| POST | `/api/auth/logout` | Clear JWT cookie |
+| GET | `/api/auth/me` | Current user (JWT required) |
 | POST | `/api/auth/forgot-password` | Request a reset link |
 | POST | `/api/auth/reset-password` | Set a new password |
-| POST | `/api/auth/staff` | ADMIN-only staff creation |
+| POST | `/api/auth/product-owners` | ADMIN-only product owner creation |
 | GET | `/api/health` | Health check |
 
-If SMTP settings are empty, password reset links are printed in the Flask console so you can test locally.
+If SMTP settings are empty, password reset links are printed in the Flask console (development only). The API never returns the raw reset token in JSON.
+
+### Tests
+
+```bash
+cd backend
+.\.venv\Scripts\python -m pytest tests -q
+```
+
+Tests use a temporary SQLite file. They do not delete `instance/brightloop.db`.
 
 ## Frontend
 
@@ -98,7 +126,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. Next.js proxies `/api/*` to the Flask backend so the login cookie stays on the same origin.
+Open `http://localhost:3000`. Next.js proxies `/api/*` to Flask so the JWT cookie stays on the same origin.
 
 ### Pages
 
@@ -108,7 +136,7 @@ Open `http://localhost:3000`. Next.js proxies `/api/*` to the Flask backend so t
 - `/reset-password`
 - `/` after login: a small role-aware landing with logout (not a product dashboard)
 
-After login, users are sent to `/` with a view hint for ADMIN, STAFF, or CUSTOMER.
+After login, users are sent to `/` with a view hint for ADMIN, PRODUCT_OWNER, or CUSTOMER.
 
 ## Password rules
 

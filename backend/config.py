@@ -1,8 +1,13 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+BACKEND_DIR = Path(__file__).resolve().parent
+INSTANCE_DIR = BACKEND_DIR / "instance"
+SQLITE_FILENAME = "brightloop.db"
 
 
 def _bool(value, default=False):
@@ -11,15 +16,32 @@ def _bool(value, default=False):
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def default_sqlite_uri():
+    INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
+    db_path = INSTANCE_DIR / SQLITE_FILENAME
+    return "sqlite:///" + db_path.as_posix()
+
+
+def resolve_database_uri():
+    """Use local SQLite unless a non-Postgres DATABASE_URL is explicitly set.
+
+    Relative sqlite:/// paths are rewritten to backend/instance/brightloop.db so
+    the file location does not depend on the shell cwd. PostgreSQL URLs are
+    ignored so leftover .env values cannot keep Postgres active.
+    """
+    url = (os.getenv("DATABASE_URL") or "").strip()
+    if not url or url.startswith("postgresql"):
+        return default_sqlite_uri()
+    if url.startswith("sqlite:///") and ":memory:" not in url:
+        rest = url[len("sqlite:///") :]
+        if rest and not Path(rest).is_absolute():
+            return default_sqlite_uri()
+    return url
+
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")
-    _database_url = os.getenv(
-        "DATABASE_URL",
-        "postgresql+psycopg://postgres:postgres@localhost:5432/brightloop_db",
-    )
-    if _database_url.startswith("postgresql://"):
-        _database_url = _database_url.replace("postgresql://", "postgresql+psycopg://", 1)
-    SQLALCHEMY_DATABASE_URI = _database_url
+    SQLALCHEMY_DATABASE_URI = resolve_database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_EXPIRY_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "12"))
     RESET_TOKEN_EXPIRY_MINUTES = int(os.getenv("RESET_TOKEN_EXPIRY_MINUTES", "30"))

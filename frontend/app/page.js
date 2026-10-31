@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 
 import { Alert, Field, SubmitButton } from "@/components/AuthShell";
 import { apiRequest, roleCopy, roleLabel } from "@/lib/api";
@@ -12,13 +13,13 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [staffForm, setStaffForm] = useState({
+  const [ownerForm, setOwnerForm] = useState({
     full_name: "",
     email: "",
     password: "",
     confirm_password: "",
   });
-  const [staffLoading, setStaffLoading] = useState(false);
+  const [ownerLoading, setOwnerLoading] = useState(false);
 
   useEffect(() => {
     apiRequest("/api/auth/me")
@@ -28,26 +29,29 @@ export default function HomePage() {
   }, [router]);
 
   async function logout() {
-    await apiRequest("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    try {
+      await apiRequest("/api/auth/logout", { method: "POST" });
+    } finally {
+      router.push("/login");
+    }
   }
 
-  async function createStaff(event) {
+  async function createProductOwner(event) {
     event.preventDefault();
     setError("");
     setMessage("");
-    setStaffLoading(true);
+    setOwnerLoading(true);
     try {
-      const data = await apiRequest("/api/auth/staff", {
+      const data = await apiRequest("/api/auth/product-owners", {
         method: "POST",
-        body: staffForm,
+        body: ownerForm,
       });
-      setMessage(`Staff account created for ${data.user.email}.`);
-      setStaffForm({ full_name: "", email: "", password: "", confirm_password: "" });
+      setMessage(`Product owner account created for ${data.user.email}.`);
+      setOwnerForm({ full_name: "", email: "", password: "", confirm_password: "" });
     } catch (err) {
       setError(err.message);
     } finally {
-      setStaffLoading(false);
+      setOwnerLoading(false);
     }
   }
 
@@ -65,8 +69,9 @@ export default function HomePage() {
           <button
             type="button"
             onClick={logout}
-            className="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink hover:border-moss hover:text-moss"
+            className="inline-flex items-center gap-2 rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink hover:border-moss hover:text-moss"
           >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
             Log out
           </button>
         </div>
@@ -89,53 +94,53 @@ export default function HomePage() {
 
         {user.role === "ADMIN" ? (
           <section className="mt-6 rounded-3xl border border-ink/10 bg-white p-8">
-            <h2 className="font-display text-2xl">Create a staff account</h2>
+            <h2 className="font-display text-2xl">Create a product owner account</h2>
             <p className="mt-2 text-sm text-ink/65">
-              Only administrators can add STAFF users. Public registration cannot
-              create ADMIN or STAFF accounts.
+              Only administrators can add PRODUCT_OWNER users. Public registration cannot
+              create ADMIN or PRODUCT_OWNER accounts.
             </p>
-            <form className="mt-6" onSubmit={createStaff}>
+            <form className="mt-6" onSubmit={createProductOwner}>
               {error ? <Alert>{error}</Alert> : null}
               {message ? <Alert tone="success">{message}</Alert> : null}
               <Field
                 label="Full name"
                 name="full_name"
-                value={staffForm.full_name}
+                value={ownerForm.full_name}
                 onChange={(event) =>
-                  setStaffForm((current) => ({ ...current, full_name: event.target.value }))
+                  setOwnerForm((current) => ({ ...current, full_name: event.target.value }))
                 }
               />
               <Field
                 label="Email"
                 type="email"
                 name="email"
-                value={staffForm.email}
+                value={ownerForm.email}
                 onChange={(event) =>
-                  setStaffForm((current) => ({ ...current, email: event.target.value }))
+                  setOwnerForm((current) => ({ ...current, email: event.target.value }))
                 }
               />
               <Field
                 label="Password"
                 type="password"
                 name="password"
-                value={staffForm.password}
+                value={ownerForm.password}
                 onChange={(event) =>
-                  setStaffForm((current) => ({ ...current, password: event.target.value }))
+                  setOwnerForm((current) => ({ ...current, password: event.target.value }))
                 }
               />
               <Field
                 label="Confirm password"
                 type="password"
                 name="confirm_password"
-                value={staffForm.confirm_password}
+                value={ownerForm.confirm_password}
                 onChange={(event) =>
-                  setStaffForm((current) => ({
+                  setOwnerForm((current) => ({
                     ...current,
                     confirm_password: event.target.value,
                   }))
                 }
               />
-              <SubmitButton loading={staffLoading}>Create staff user</SubmitButton>
+              <SubmitButton loading={ownerLoading}>Create product owner</SubmitButton>
             </form>
           </section>
         ) : null}
