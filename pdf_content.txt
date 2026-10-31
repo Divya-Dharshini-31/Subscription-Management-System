@@ -1,13 +1,13 @@
 Subscription Management System
 Build one system to run plans, subscriptions and recurring billing in one place.
 1) The Challenge
-Your task is to build one unified software platform that runs the full life of a subscription
+ Your task is to build one unified software platform that runs the full life of a subscription
 business, from setting up products and plans to sending invoices, collecting payments
 and reporting revenue. Think of it as the digital backbone of a company that earns its
 money every month, not just once. Read the scenes that follow as things that actually
 happen in an ordinary billing month, and design the system that makes each of them easy.
 2) Meet Brightloop Software
-Brightloop Software sells everything on subscription: business software billed by the
+ Brightloop Software sells everything on subscription: business software billed by the
 month or the year, add-ons customers switch on and off, and a few products that come in
 different variants. Customers range from small shops on a monthly plan to large
 companies on yearly contracts. An admin sets up products, plans, taxes and discounts,
@@ -15,15 +15,15 @@ a small internal team handles customers day to day, and customers want to see an
 manage their own subscriptions without having to email anyone.
 
 How Things Run Today
-●Customer subscriptions: Tracked in a spreadsheet
-●Renewals: Remembered by whoever notices first
-●Invoices: Typed up by hand every month
-●Payments: Matched to invoices by scrolling through bank statements
-●Revenue reports: Built manually at the end of each quarter
+● Customer subscriptions: Tracked in a spreadsheet
+● Renewals: Remembered by whoever notices first
+● Invoices: Typed up by hand every month
+● Payments: Matched to invoices by scrolling through bank statements
+● Revenue reports: Built manually at the end of each quarter
 Renewals get missed, invoices go out wrong, and nobody can say how much recurring
 revenue the company actually has.
 3) A Month at Brightloop
-The scenes below follow one billing month at Brightloop Software, from a new customer
+ The scenes below follow one billing month at Brightloop Software, from a new customer
 creating an account to the finance lead reviewing the numbers. Every one of them is a
 problem someone at the company faces today.
 A new customer signs up
@@ -78,4 +78,3 @@ owed? Which invoices are overdue? Today, answering those questions takes days.
 The finance lead wants one place to see active subscriptions, revenue, payments and
 overdue invoices, with filters and a summary view. With thousands of subscriptions on
 the books, every page should still respond in under two seconds.
-
