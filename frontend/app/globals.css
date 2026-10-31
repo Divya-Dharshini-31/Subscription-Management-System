@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background-color: #f4efe6;
+  color: #0f1c2e;
+}
+
+.auth-input {
+  @apply w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-moss focus:ring-2 focus:ring-moss/20;
+}
