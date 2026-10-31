@@ -31,7 +31,15 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      await apiRequest("/api/auth/register", { method: "POST", body: form });
+      await apiRequest("/api/auth/register", {
+        method: "POST",
+        body: {
+          full_name: form.full_name,
+          email: form.email,
+          password: form.password,
+          confirm_password: form.confirm_password,
+        },
+      });
       router.push("/login");
     } catch (err) {
       setError(err.message);
@@ -88,6 +96,22 @@ export default function RegisterPage() {
           onChange={update}
           autoComplete="new-password"
         />
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-ink mb-1">
+            Account Type
+          </label>
+          <select
+            name="role"
+            value="CUSTOMER"
+            disabled
+            className="w-full px-3 py-2 border border-stone/20 rounded-lg bg-stone/5 text-ink/80 cursor-not-allowed focus:outline-none"
+          >
+            <option value="CUSTOMER">Customer (Public self-registration)</option>
+          </select>
+          <p className="mt-1 text-xs text-ink/55">
+            Public registration creates a CUSTOMER account. Admin and Internal Staff accounts are provisioned securely by system administrators.
+          </p>
+        </div>
         <p className="mb-4 text-xs leading-5 text-ink/55">
           Use more than 8 characters, with uppercase, lowercase, and a special
           character.

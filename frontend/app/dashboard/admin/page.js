@@ -65,6 +65,7 @@ const STATUS_PILL = {
 /* ── Create Product Owner Modal ─────────────────────────────── */
 function CreateOwnerModal({ onClose, onCreated }) {
   const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm_password: "" });
+  const [roleType, setRoleType] = useState("INTERNAL");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -77,7 +78,8 @@ function CreateOwnerModal({ onClose, onCreated }) {
     setError("");
     setLoading(true);
     try {
-      await apiRequest("/api/auth/product-owners", { method: "POST", body: form });
+      const endpoint = roleType === "INTERNAL" ? "/api/auth/staff" : "/api/auth/product-owners";
+      await apiRequest(endpoint, { method: "POST", body: form });
       onCreated();
     } catch (err) {
       setError(err.message);
@@ -92,7 +94,7 @@ function CreateOwnerModal({ onClose, onCreated }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
             <h2 className="modal-title">Add Staff Member</h2>
-            <p className="modal-sub">Create a new Product Owner account.</p>
+            <p className="modal-sub">Create a new Internal Staff or Product Owner account.</p>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(15,28,46,0.4)", padding: 4 }}>
             <X size={18} />
@@ -104,6 +106,17 @@ function CreateOwnerModal({ onClose, onCreated }) {
           </div>
         )}
         <form onSubmit={submit}>
+          <div className="form-group">
+            <label className="form-label">Role Type</label>
+            <select
+              className="form-select"
+              value={roleType}
+              onChange={(e) => setRoleType(e.target.value)}
+            >
+              <option value="INTERNAL">Internal Staff (/api/auth/staff)</option>
+              <option value="PRODUCT_OWNER">Product Owner (/api/auth/product-owners)</option>
+            </select>
+          </div>
           {[
             { field: "full_name", label: "Full name", type: "text" },
             { field: "email", label: "Email address", type: "email" },
@@ -267,7 +280,7 @@ function ProductsView() {
           <h2 className="section-title">Product Catalogue</h2>
           <p className="section-sub">All subscription products</p>
         </div>
-        <button className="btn-primary">
+        <button className="btn-primary" disabled style={{ opacity: 0.5, cursor: "not-allowed" }}>
           <Plus size={14} />
           Add Product
         </button>

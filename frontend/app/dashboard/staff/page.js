@@ -21,6 +21,7 @@ import {
   Briefcase,
   Send,
   Activity,
+  AlertCircle,
 } from "lucide-react";
 
 import DashboardShell from "@/components/DashboardShell";
@@ -159,14 +160,38 @@ function RecordPaymentModal({ invoice, onClose }) {
   const [ref, setRef] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
 
   async function submit(e) {
     e.preventDefault();
+    setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    setDone(true);
-    setTimeout(onClose, 1200);
+    try {
+      const idempotencyKey = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const response = await fetch(`/api/v1/invoices/${invoice.id}/payments`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({
+          amount: invoice.amount_due,
+          payment_method: method,
+          reference: ref,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to record payment");
+      }
+      setDone(true);
+      setTimeout(onClose, 1200);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -175,12 +200,17 @@ function RecordPaymentModal({ invoice, onClose }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
             <h2 className="modal-title">Record Payment</h2>
-            <p className="modal-sub">{invoice.id} · {invoice.customer} · {invoice.amount}</p>
+            <p className="modal-sub">{invoice.invoice_number} · {invoice.customer_name} · ₹{invoice.amount_due}</p>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(15,28,46,0.4)", padding: 4 }}>
             <X size={18} />
           </button>
         </div>
+        {error && (
+          <div style={{ background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: 14 }}>
+            {error}
+          </div>
+        )}
         {done ? (
           <div style={{ textAlign: "center", padding: "24px 0" }}>
             <CheckCircle2 size={40} color="#16a34a" style={{ margin: "0 auto 12px" }} />
@@ -468,7 +498,8 @@ export default function StaffDashboard() {
   useEffect(() => {
     apiRequest("/api/auth/me")
       .then((data) => {
-        if (data.user?.role !== "PRODUCT_OWNER") {
+        const role = data.user?.role;
+        if (role !== "PRODUCT_OWNER" && role !== "INTERNAL" && role !== "ADMIN") {
           router.replace(data.redirect || "/login");
         } else {
           setUser(data.user);
@@ -506,7 +537,7 @@ export default function StaffDashboard() {
         onTabChange={setActiveTab}
         title={PAGE_TITLE[activeTab]}
         user={user}
-        roleBadge="Product Owner"
+        roleBadge={user?.role === "ADMIN" ? "Administrator" : user?.role === "INTERNAL" ? "Internal Staff" : "Product Owner"}
         topbarRight={
           <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, background: "rgba(29,78,216,0.08)", color: "#1d4ed8", padding: "5px 12px", borderRadius: 20 }}>
             <Briefcase size={13} /> Staff

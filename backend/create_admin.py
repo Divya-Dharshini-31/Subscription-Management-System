@@ -3,7 +3,9 @@
 Examples:
   python create_admin.py
   python create_admin.py --name "Ada Admin" --email ada@brightloop.local
+  python create_admin.py --role INTERNAL --name "Sam Staff" --email sam@brightloop.local
   python create_admin.py --role PRODUCT_OWNER --name "Pat Owner" --email pat@brightloop.local
+  python create_admin.py --reset --email admin@brightloop.local
 """
 
 import argparse
@@ -14,12 +16,12 @@ from app import create_app
 from models import User, UserRole, db
 from security import hash_password, normalize_email, validate_password
 
-PRIVILEGED_ROLES = (UserRole.ADMIN, UserRole.PRODUCT_OWNER)
+PRIVILEGED_ROLES = (UserRole.ADMIN, UserRole.PRODUCT_OWNER, UserRole.INTERNAL)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Create a privileged Brightloop account (ADMIN or PRODUCT_OWNER)."
+        description="Create or manage a privileged Brightloop account (ADMIN, INTERNAL, or PRODUCT_OWNER)."
     )
     parser.add_argument("--name", help="Full name")
     parser.add_argument("--email", help="Account email")
@@ -29,6 +31,11 @@ def parse_args():
         default=UserRole.ADMIN.value,
         choices=[role.value for role in PRIVILEGED_ROLES],
         help="Privileged role to create (default: ADMIN)",
+    )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Reset password for an existing account identified by --email",
     )
     return parser.parse_args()
 
@@ -54,14 +61,34 @@ def prompt_password(current):
 
 def main():
     args = parse_args()
-    role = UserRole(args.role)
     app = create_app()
 
     with app.app_context():
+        if args.reset:
+            email = normalize_email(prompt("Email", args.email))
+            user = User.query.filter_by(email=email).first()
+            if not user:
+                print(f"No account found with email {email}.")
+                sys.exit(1)
+            password = prompt_password(args.password)
+            valid, hint = validate_password(password)
+            if not valid:
+                print(hint)
+                sys.exit(1)
+            user.password_hash = hash_password(password)
+            db.session.commit()
+            role_val = user.role.value if isinstance(user.role, UserRole) else user.role
+            print(f"Password updated for {user.email} ({role_val}).")
+            return
+
+        role = UserRole(args.role)
         if role is UserRole.ADMIN:
             existing = User.query.filter_by(role=UserRole.ADMIN).first()
             if existing:
-                print(f"An ADMIN account already exists ({existing.email}).")
+                print(
+                    f"An ADMIN account already exists ({existing.email}). "
+                    "Use --reset with --email to update its password, or --role INTERNAL / --role PRODUCT_OWNER to create staff."
+                )
                 sys.exit(1)
 
         full_name = prompt("Full name", args.name)

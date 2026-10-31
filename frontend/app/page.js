@@ -18,7 +18,7 @@ export default function HomePage() {
         const role = data?.user?.role;
         if (role === "ADMIN") {
           router.replace("/dashboard/admin");
-        } else if (role === "PRODUCT_OWNER") {
+        } else if (role === "PRODUCT_OWNER" || role === "INTERNAL") {
           router.replace("/dashboard/staff");
         } else if (role === "CUSTOMER") {
           router.replace("/dashboard/customer");
