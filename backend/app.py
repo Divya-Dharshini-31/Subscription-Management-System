@@ -5,6 +5,7 @@ from auth import auth_bp
 from config import Config, resolve_database_uri
 from domain_api import domain_bp
 from models import db
+from data_store import seed_domain
 
 
 def create_app():
@@ -22,8 +23,8 @@ def create_app():
         app,
         supports_credentials=True,
         origins=app.config["CORS_ORIGINS"],
-        allow_headers=["Content-Type", "Authorization"],
-        methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "Idempotency-Key"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
     app.register_blueprint(auth_bp)
@@ -35,6 +36,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        seed_domain(db.session)
 
     return app
 

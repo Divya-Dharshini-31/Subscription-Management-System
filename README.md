@@ -55,7 +55,15 @@ Login issues a signed JWT with `sub` (user id), `role`, `iat`, and `exp`. The br
 
 ## Database notes
 
-The app uses SQLite. Tables are created with `db.create_all()` on startup (missing tables only; nothing is dropped).
+The app uses SQLite. Tables are created with `db.create_all()` on startup
+(missing tables only; nothing is dropped). SQLite connections enable foreign
+keys, WAL journaling, normal synchronous writes, and a 5-second busy timeout.
+Domain records are persisted in SQLAlchemy tables with indexed identity,
+ownership, status, and integer minor-unit amount columns.
+
+Money submitted to the API remains in major currency units for compatibility,
+but is stored as integer minor units. Values use `ROUND_HALF_UP`. Payment
+requests are idempotent and require an `Idempotency-Key` header.
 
 If you previously configured PostgreSQL, those records are **not** copied into SQLite. Start with a new local file at `backend/instance/brightloop.db`, then recreate accounts (including the first admin).
 
@@ -156,21 +164,21 @@ profile; admin and staff receive the operational views.
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/api/v1/catalog/products` | List products (also plans, taxes, discounts, templates) |
+| POST | `/api/v1/catalog/{resource}` | Admin-only catalog creation with an allow-listed payload |
 | GET | `/api/v1/customers` | Paginated customer list (admin/staff) |
 | GET | `/api/v1/subscriptions` | Paginated, optionally status-filtered subscriptions |
 | POST | `/api/v1/subscriptions/<id>/actions/<action>` | Enforce subscription state transitions |
 | GET | `/api/v1/invoices` | Paginated invoice list |
 | POST | `/api/v1/invoices/<id>/actions/confirm` | Confirm a draft invoice |
 | POST | `/api/v1/invoices/<id>/payments` | Record an idempotent partial/full payment |
+| GET | `/api/v1/payments` | Paginated payment list with customer scoping |
 | POST | `/api/v1/billing-runs` | Generate due invoices for a requested `date` |
 | GET | `/api/v1/reports/summary` | Staff/admin finance summary |
 
-Amounts are rounded to two decimal places using `ROUND_HALF_UP`. Payment
-requests must include an `Idempotency-Key` header and cannot exceed the
-invoice amount due. Invoice and subscription state transitions are rejected
-server-side when invalid. The current seed store is intentionally kept small;
-the next migration can move these service contracts to SQLAlchemy domain
-tables without changing the API.
+Payment requests cannot exceed the invoice amount due. Invoice and subscription
+state transitions are rejected server-side when invalid. The development seed
+is loaded idempotently into the SQLAlchemy domain tables on first startup, and
+rerunning a billing date does not create duplicate invoices.
 
 ## Password rules
 

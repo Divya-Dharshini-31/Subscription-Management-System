@@ -754,5 +754,34 @@ class BrightloopDataStore:
         }
 
 
-# Global Singleton
+def seed_domain(session):
+    """Load the immutable demo catalog once into SQLAlchemy."""
+    from models import (Product, Plan, Tax, Discount, Template, Customer,
+                        Subscription, Invoice, Payment)
+    tables = [
+        (Product, SEED_PRODUCTS), (Plan, SEED_PLANS), (Tax, SEED_TAXES),
+        (Discount, SEED_DISCOUNTS), (Template, SEED_TEMPLATES),
+        (Customer, SEED_CUSTOMERS), (Subscription, SEED_SUBSCRIPTIONS),
+        (Invoice, SEED_INVOICES), (Payment, SEED_PAYMENTS),
+    ]
+    for model, records in tables:
+        if session.query(model).first() is not None:
+            continue
+        for source in records:
+            record = copy.deepcopy(source)
+            amount = record.get("total_amount", record.get("amount", 0))
+            minor = int(round(float(amount) * 100))
+            customer_id = record.get("customer_id")
+            values = dict(id=record["id"], payload=record, customer_id=customer_id,
+                          status=record.get("status"), amount_minor=minor)
+            if model is Payment:
+                values.update(invoice_id=record.get("invoice_id", ""),
+                              idempotency_key=record.get("idempotency_key", record["id"]))
+            if model is Invoice and record.get("idempotency_key"):
+                values["idempotency_key"] = record["idempotency_key"]
+            session.add(model(**values))
+    session.commit()
+
+
+# Kept for legacy callers; domain_api no longer reads this in-memory object.
 store = BrightloopDataStore()

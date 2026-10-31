@@ -492,6 +492,7 @@ export default function StaffDashboard() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [stats, setStats] = useState(MOCK.stats);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [payInvoice, setPayInvoice] = useState(null);
 
@@ -503,6 +504,16 @@ export default function StaffDashboard() {
           router.replace(data.redirect || "/login");
         } else {
           setUser(data.user);
+          apiRequest("/api/v1/reports/summary")
+            .then((summary) => {
+              setStats([
+                { ...MOCK.stats[0], value: String(summary.total_customers || 0) },
+                { ...MOCK.stats[1], value: String(summary.active_subscriptions || 0) },
+                { ...MOCK.stats[2], value: String(summary.overdue_invoices || 0) },
+                { ...MOCK.stats[3], value: String(summary.pending_quotes || 0) },
+              ]);
+            })
+            .catch(() => {});
         }
       })
       .catch(() => router.replace("/login"))
@@ -520,12 +531,12 @@ export default function StaffDashboard() {
 
   function renderView() {
     switch (activeTab) {
-      case "overview": return <Overview stats={MOCK.stats} />;
+      case "overview": return <Overview stats={stats} />;
       case "customers": return <CustomersView />;
       case "subscriptions": return <SubscriptionsView />;
       case "quotes": return <QuotesView onNew={() => setShowQuoteModal(true)} />;
       case "invoices": return <InvoicesView onRecord={setPayInvoice} />;
-      default: return <Overview stats={MOCK.stats} />;
+      default: return <Overview stats={stats} />;
     }
   }
 
