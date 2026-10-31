@@ -237,6 +237,7 @@ def reset_password():
 
 
 @auth_bp.post("/product-owners")
+@auth_bp.post("/staff")
 @roles_required(UserRole.ADMIN)
 def create_product_owner():
     payload = request.get_json(silent=True) or {}
@@ -260,7 +261,7 @@ def create_product_owner():
         full_name=payload["full_name"].strip(),
         email=email,
         password_hash=hash_password(password),
-        role=UserRole.PRODUCT_OWNER,
+        role=UserRole.INTERNAL if request.path.endswith("/staff") else UserRole.PRODUCT_OWNER,
     )
     db.session.add(owner)
     try:
@@ -277,5 +278,7 @@ def role_home(role):
     if value == UserRole.ADMIN.value:
         return "/?view=admin"
     if value == UserRole.PRODUCT_OWNER.value:
-        return "/?view=product-owner"
+        return "/?view=staff"
+    if value == UserRole.INTERNAL.value:
+        return "/?view=staff"
     return "/?view=customer"

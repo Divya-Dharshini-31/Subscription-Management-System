@@ -20,6 +20,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
 class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
     CUSTOMER = "CUSTOMER"
+    INTERNAL = "INTERNAL"
     PRODUCT_OWNER = "PRODUCT_OWNER"
 
 

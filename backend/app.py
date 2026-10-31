@@ -3,6 +3,7 @@ from flask_cors import CORS
 
 from auth import auth_bp
 from config import Config, resolve_database_uri
+from domain_api import domain_bp
 from models import db
 
 
@@ -26,6 +27,7 @@ def create_app():
     )
 
     app.register_blueprint(auth_bp)
+    app.register_blueprint(domain_bp)
 
     @app.get("/api/health")
     def health():
