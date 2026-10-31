@@ -1,6 +1,9 @@
 # Brightloop Subscription Management System
 
-A platform for managing subscription lifecycles. This repository currently includes the **basic authentication module** only: sign up, login, logout, forgot password, and reset password.
+A platform for managing subscription lifecycles. The repository includes authentication plus a secured subscription domain API for
+catalog data, subscriptions, invoices, payments, billing runs, and finance
+summary reporting. The dashboard screens are role-specific and the API remains
+the enforcement boundary.
 
 ## Stack
 
@@ -13,8 +16,9 @@ A platform for managing subscription lifecycles. This repository currently inclu
 
 ```
 backend/                 Flask API
-  app.py               App factory, CORS, health check
+  app.py               App factory, CORS, health check, domain API registration
   auth.py              Auth routes
+  domain_api.py        Versioned subscription, billing, payment, and reporting API
   config.py            Environment-based settings (SQLite path)
   models.py            User and password-reset tables
   security.py          Hashing, JWT, password rules, role decorators
@@ -29,7 +33,11 @@ frontend/               Next.js app
   app/page.js          Signed-in landing (logout + ADMIN product-owner creation)
 ```
 
-Public registration always creates a **CUSTOMER** account. ADMIN and PRODUCT_OWNER cannot be created from `/register`. An ADMIN can create PRODUCT_OWNER accounts. The first ADMIN is created with `python create_admin.py` so credentials are never hardcoded.
+Public registration always creates a **CUSTOMER** account. ADMIN and staff
+cannot be created from `/register`. An ADMIN can create staff through
+`/api/auth/staff`; the legacy `/api/auth/product-owners` endpoint remains
+available for compatibility and creates the legacy `PRODUCT_OWNER` role.
+`INTERNAL` and `PRODUCT_OWNER` have the same staff API permissions.
 
 ## Roles
 
@@ -136,7 +144,33 @@ Open `http://localhost:3000`. Next.js proxies `/api/*` to Flask so the JWT cooki
 - `/reset-password`
 - `/` after login: a small role-aware landing with logout (not a product dashboard)
 
-After login, users are sent to `/` with a view hint for ADMIN, PRODUCT_OWNER, or CUSTOMER.
+After login, users are sent to `/` with a view hint for ADMIN, staff, or
+CUSTOMER. The root page then redirects to the matching dashboard route.
+
+### Subscription API
+
+The domain endpoints are under `/api/v1` and require the JWT cookie or a
+Bearer token. Customers receive 404 for records outside their own customer
+profile; admin and staff receive the operational views.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/v1/catalog/products` | List products (also plans, taxes, discounts, templates) |
+| GET | `/api/v1/customers` | Paginated customer list (admin/staff) |
+| GET | `/api/v1/subscriptions` | Paginated, optionally status-filtered subscriptions |
+| POST | `/api/v1/subscriptions/<id>/actions/<action>` | Enforce subscription state transitions |
+| GET | `/api/v1/invoices` | Paginated invoice list |
+| POST | `/api/v1/invoices/<id>/actions/confirm` | Confirm a draft invoice |
+| POST | `/api/v1/invoices/<id>/payments` | Record an idempotent partial/full payment |
+| POST | `/api/v1/billing-runs` | Generate due invoices for a requested `date` |
+| GET | `/api/v1/reports/summary` | Staff/admin finance summary |
+
+Amounts are rounded to two decimal places using `ROUND_HALF_UP`. Payment
+requests must include an `Idempotency-Key` header and cannot exceed the
+invoice amount due. Invoice and subscription state transitions are rejected
+server-side when invalid. The current seed store is intentionally kept small;
+the next migration can move these service contracts to SQLAlchemy domain
+tables without changing the API.
 
 ## Password rules
 
