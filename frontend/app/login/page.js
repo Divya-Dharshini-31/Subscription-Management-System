@@ -7,6 +7,22 @@ import { useState } from "react";
 import AuthShell, { Alert, Field, SubmitButton } from "@/components/AuthShell";
 import { apiRequest } from "@/lib/api";
 
+function validateLoginForm({ email, password }) {
+  const trimmedEmail = String(email || "").trim();
+  const emailIsValid = /.+@.+\..+/.test(trimmedEmail);
+
+  if (!trimmedEmail) {
+    return "Please enter your email address.";
+  }
+  if (!emailIsValid) {
+    return "Please enter a valid email address.";
+  }
+  if (!password || String(password).trim().length === 0) {
+    return "Please enter your password.";
+  }
+  return "";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "" });
@@ -19,6 +35,11 @@ export default function LoginPage() {
 
   async function onSubmit(event) {
     event.preventDefault();
+    const validationError = validateLoginForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setError("");
     setLoading(true);
     try {

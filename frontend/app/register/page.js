@@ -7,6 +7,31 @@ import { useState } from "react";
 import AuthShell, { Alert, Field, SubmitButton } from "@/components/AuthShell";
 import { apiRequest } from "@/lib/api";
 
+function validateRegisterForm({ full_name, email, password, confirm_password, role }) {
+  const trimmedName = String(full_name || "").trim();
+  const trimmedEmail = String(email || "").trim();
+
+  if (!trimmedName) {
+    return "Please enter your full name.";
+  }
+  if (!trimmedEmail || !/.+@.+\..+/.test(trimmedEmail)) {
+    return "Please enter a valid email address.";
+  }
+  if (!password || password.length <= 8) {
+    return "Password must be more than 8 characters.";
+  }
+  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    return "Password must include uppercase, lowercase, and a special character.";
+  }
+  if (password !== confirm_password) {
+    return "Password and confirm password do not match.";
+  }
+  if (!role || !["CUSTOMER", "INTERNAL", "ADMIN"].includes(role)) {
+    return "Please choose a valid role.";
+  }
+  return "";
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -25,11 +50,12 @@ export default function RegisterPage() {
 
   async function onSubmit(event) {
     event.preventDefault();
-    setError("");
-    if (form.password !== form.confirm_password) {
-      setError("Password and confirm password do not match.");
+    const validationError = validateRegisterForm(form);
+    if (validationError) {
+      setError(validationError);
       return;
     }
+    setError("");
     setLoading(true);
     try {
       await apiRequest("/api/auth/register", {

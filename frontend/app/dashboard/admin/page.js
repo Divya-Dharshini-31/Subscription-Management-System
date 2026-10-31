@@ -40,6 +40,9 @@ const MOCK = {
     { id: 3, name: "CloudFin Ltd", email: "ops@cloudfin.in", plan: "Brightloop ERP Core", status: "Trial", since: "Oct 20, 2026" },
     { id: 4, name: "Delta Logistics", email: "it@deltalog.com", plan: "Brightloop HRM", status: "Suspended", since: "Oct 15, 2026" },
     { id: 5, name: "Summit School", email: "admin@summit.edu", plan: "Brightloop ERP Core", status: "Active", since: "Oct 12, 2026" },
+    { id: 6, name: "Greenleaf Pvt", email: "finance@greenleaf.in", plan: "Brightloop ERP Pro", status: "Active", since: "Oct 9, 2026" },
+    { id: 7, name: "SkyLine Infra", email: "ops@skylineinfra.com", plan: "Brightloop Analytics", status: "Trial", since: "Oct 7, 2026" },
+    { id: 8, name: "BrightFoods Co", email: "billing@brightfoods.co", plan: "Brightloop POS Plus", status: "Active", since: "Sep 30, 2026" },
   ],
   products: [
     { id: 1, name: "Brightloop ERP Core", type: "Software License", price: "₹12,500/mo", subscribers: 54 },
@@ -47,11 +50,15 @@ const MOCK = {
     { id: 3, name: "Brightloop POS Plus", type: "Add-on", price: "₹4,500/mo", subscribers: 29 },
     { id: 4, name: "Brightloop HRM", type: "Add-on", price: "₹3,200/mo", subscribers: 17 },
     { id: 5, name: "Brightloop Analytics", type: "Add-on", price: "₹5,800/mo", subscribers: 10 },
+    { id: 6, name: "Brightloop Payroll", type: "Add-on", price: "₹2,900/mo", subscribers: 12 },
+    { id: 7, name: "Brightloop Support Pro", type: "Service", price: "₹6,400/mo", subscribers: 18 },
   ],
   staff: [
     { id: 1, name: "Priya Menon", email: "priya@brightloop.io", role: "Product Owner", customers: 34, since: "Jan 2025" },
     { id: 2, name: "Arjun Das", email: "arjun@brightloop.io", role: "Product Owner", customers: 28, since: "Mar 2025" },
     { id: 3, name: "Kavitha R", email: "kavitha@brightloop.io", role: "Product Owner", customers: 21, since: "Jun 2025" },
+    { id: 4, name: "Rohan Iyer", email: "rohan@brightloop.io", role: "Internal Staff", customers: 18, since: "Aug 2025" },
+    { id: 5, name: "Meera Nair", email: "meera@brightloop.io", role: "Internal Staff", customers: 16, since: "Sep 2025" },
   ],
 };
 
@@ -61,6 +68,23 @@ const STATUS_PILL = {
   Suspended: "pill pill-red",
   Closed: "pill pill-gray",
 };
+
+function formatCurrency(value) {
+  const amount = Number(value || 0);
+  return `₹${amount.toLocaleString("en-IN")}`;
+}
+
+function normalizeProduct(item) {
+  const payload = item?.payload || item || {};
+  const rawPrice = payload.sales_price ?? payload.price ?? payload.amount ?? payload.total_amount ?? 0;
+  return {
+    id: item?.id || payload.id || "prod-unknown",
+    name: payload.name || payload.title || "Untitled product",
+    type: payload.type || "Software License",
+    price: rawPrice !== 0 ? `${formatCurrency(rawPrice)}/mo` : "₹0/mo",
+    subscribers: Number(payload.subscribers || payload.customer_count || 0),
+  };
+}
 
 /* ── Create Product Owner Modal ─────────────────────────────── */
 function CreateOwnerModal({ onClose, onCreated }) {
@@ -150,6 +174,18 @@ function CreateOwnerModal({ onClose, onCreated }) {
 }
 
 /* ── Sub-views ────────────────────────────────────────────────── */
+function EmptyTableState({ icon: Icon, title, description }) {
+  return (
+    <div className="empty-state">
+      <div className="empty-icon">
+        <Icon size={22} color="rgba(15,28,46,0.3)" />
+      </div>
+      <h3 className="empty-title">{title}</h3>
+      <p className="empty-body">{description}</p>
+    </div>
+  );
+}
+
 function Overview({ stats }) {
   return (
     <div>
@@ -246,33 +282,41 @@ function CustomersView() {
           <p className="section-sub">{MOCK.recentCustomers.length} registered accounts</p>
         </div>
       </div>
-      <table className="dash-table">
-        <thead>
-          <tr>
-            <th>Customer</th>
-            <th>Email</th>
-            <th>Plan</th>
-            <th>Status</th>
-            <th>Member Since</th>
-          </tr>
-        </thead>
-        <tbody>
-          {MOCK.recentCustomers.map((c) => (
-            <tr key={c.id}>
-              <td style={{ fontWeight: 600 }}>{c.name}</td>
-              <td style={{ color: "rgba(15,28,46,0.55)", fontSize: 13 }}>{c.email}</td>
-              <td style={{ fontSize: 13 }}>{c.plan}</td>
-              <td><span className={STATUS_PILL[c.status] || "pill pill-gray"}>{c.status}</span></td>
-              <td style={{ color: "rgba(15,28,46,0.5)", fontSize: 13 }}>{c.since}</td>
+      {MOCK.recentCustomers.length === 0 ? (
+        <EmptyTableState
+          icon={Users}
+          title="No customers found"
+          description="There are no registered customer accounts to display yet."
+        />
+      ) : (
+        <table className="dash-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Email</th>
+              <th>Plan</th>
+              <th>Status</th>
+              <th>Member Since</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {MOCK.recentCustomers.map((c) => (
+              <tr key={c.id}>
+                <td style={{ fontWeight: 600 }}>{c.name}</td>
+                <td style={{ color: "rgba(15,28,46,0.55)", fontSize: 13 }}>{c.email}</td>
+                <td style={{ fontSize: 13 }}>{c.plan}</td>
+                <td><span className={STATUS_PILL[c.status] || "pill pill-gray"}>{c.status}</span></td>
+                <td style={{ color: "rgba(15,28,46,0.5)", fontSize: 13 }}>{c.since}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
 
-function ProductsView() {
+function ProductsView({ products = [], loading = false, error = "" }) {
   return (
     <div className="dash-card">
       <div className="section-head">
@@ -285,30 +329,49 @@ function ProductsView() {
           Add Product
         </button>
       </div>
-      <table className="dash-table">
-        <thead>
-          <tr>
-            <th>Product Name</th>
-            <th>Type</th>
-            <th>Price</th>
-            <th>Subscribers</th>
-          </tr>
-        </thead>
-        <tbody>
-          {MOCK.products.map((p) => (
-            <tr key={p.id}>
-              <td style={{ fontWeight: 600 }}>{p.name}</td>
-              <td>
-                <span className={p.type === "Software License" ? "pill pill-moss" : "pill pill-blue"}>
-                  {p.type}
-                </span>
-              </td>
-              <td style={{ fontWeight: 600 }}>{p.price}</td>
-              <td style={{ fontWeight: 700, color: "#1f6f5b" }}>{p.subscribers}</td>
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 13, color: "#1f6f5b", fontWeight: 600 }}>
+          <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+          Loading products…
+        </div>
+      )}
+      {error && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.14)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#b91c1c", fontWeight: 500 }}>
+          {error}
+        </div>
+      )}
+      {products.length === 0 ? (
+        <EmptyTableState
+          icon={Package}
+          title="No products available"
+          description="The product catalog is empty right now."
+        />
+      ) : (
+        <table className="dash-table">
+          <thead>
+            <tr>
+              <th>Product Name</th>
+              <th>Type</th>
+              <th>Price</th>
+              <th>Subscribers</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p.id}>
+                <td style={{ fontWeight: 600 }}>{p.name}</td>
+                <td>
+                  <span className={p.type === "Software License" ? "pill pill-moss" : "pill pill-blue"}>
+                    {p.type}
+                  </span>
+                </td>
+                <td style={{ fontWeight: 600 }}>{p.price}</td>
+                <td style={{ fontWeight: 700, color: "#1f6f5b" }}>{p.subscribers}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
@@ -326,42 +389,50 @@ function StaffView({ onAddStaff }) {
           Add Staff
         </button>
       </div>
-      <table className="dash-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Customers Managed</th>
-            <th>Member Since</th>
-          </tr>
-        </thead>
-        <tbody>
-          {MOCK.staff.map((s) => (
-            <tr key={s.id}>
-              <td>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div
-                    style={{
-                      width: 32, height: 32, borderRadius: "50%",
-                      background: "linear-gradient(135deg, #1f6f5b, #4ade80)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 12, fontWeight: 700, color: "white",
-                    }}
-                  >
-                    {s.name[0]}
-                  </div>
-                  <span style={{ fontWeight: 600 }}>{s.name}</span>
-                </div>
-              </td>
-              <td style={{ fontSize: 13, color: "rgba(15,28,46,0.55)" }}>{s.email}</td>
-              <td><span className="pill pill-moss">{s.role}</span></td>
-              <td style={{ fontWeight: 700 }}>{s.customers}</td>
-              <td style={{ color: "rgba(15,28,46,0.5)", fontSize: 13 }}>{s.since}</td>
+      {MOCK.staff.length === 0 ? (
+        <EmptyTableState
+          icon={UserCheck}
+          title="No staff members yet"
+          description="Add a staff or product owner account to get started."
+        />
+      ) : (
+        <table className="dash-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Customers Managed</th>
+              <th>Member Since</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {MOCK.staff.map((s) => (
+              <tr key={s.id}>
+                <td>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div
+                      style={{
+                        width: 32, height: 32, borderRadius: "50%",
+                        background: "linear-gradient(135deg, #1f6f5b, #4ade80)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 12, fontWeight: 700, color: "white",
+                      }}
+                    >
+                      {s.name[0]}
+                    </div>
+                    <span style={{ fontWeight: 600 }}>{s.name}</span>
+                  </div>
+                </td>
+                <td style={{ fontSize: 13, color: "rgba(15,28,46,0.55)" }}>{s.email}</td>
+                <td><span className="pill pill-moss">{s.role}</span></td>
+                <td style={{ fontWeight: 700 }}>{s.customers}</td>
+                <td style={{ color: "rgba(15,28,46,0.5)", fontSize: 13 }}>{s.since}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
@@ -434,6 +505,11 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+  const [products, setProducts] = useState(MOCK.products);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState(MOCK.stats);
   const [showOwnerModal, setShowOwnerModal] = useState(false);
@@ -446,8 +522,11 @@ export default function AdminDashboard() {
           router.replace(data.redirect || "/login");
         } else {
           setUser(data.user);
+          setSummaryLoading(true);
+          setProductsLoading(true);
           apiRequest("/api/v1/reports/summary")
             .then((summary) => {
+              setSummaryError("");
               setStats([
                 { ...MOCK.stats[0], value: `₹${Number(summary.revenue_collected || 0).toLocaleString("en-IN")}` },
                 { ...MOCK.stats[1], value: String(summary.active_subscriptions || 0) },
@@ -455,7 +534,22 @@ export default function AdminDashboard() {
                 { ...MOCK.stats[3], value: String(summary.overdue_invoices || 0) },
               ]);
             })
-            .catch(() => {});
+            .catch((error) => {
+              setSummaryError(error.message || "Unable to load admin summary right now.");
+            })
+            .finally(() => setSummaryLoading(false));
+
+          apiRequest("/api/v1/catalog/products?page_size=50")
+            .then((payload) => {
+              const rows = Array.isArray(payload.items) ? payload.items : [];
+              setProductsError("");
+              setProducts(rows.length ? rows.map(normalizeProduct) : MOCK.products);
+            })
+            .catch((error) => {
+              setProductsError(error.message || "Unable to load the product catalog right now.");
+              setProducts(MOCK.products);
+            })
+            .finally(() => setProductsLoading(false));
         }
       })
       .catch(() => router.replace("/login"))
@@ -477,7 +571,7 @@ export default function AdminDashboard() {
     switch (activeTab) {
       case "overview": return <Overview stats={stats} />;
       case "customers": return <CustomersView />;
-      case "products": return <ProductsView />;
+      case "products": return <ProductsView products={products} loading={productsLoading} error={productsError} />;
       case "staff": return <StaffView onAddStaff={() => setShowOwnerModal(true)} />;
       case "reports": return <ReportsView />;
       case "settings": return <SettingsView />;
@@ -509,6 +603,31 @@ export default function AdminDashboard() {
           </div>
         }
       >
+        {summaryLoading && (
+          <div
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: "rgba(31,111,91,0.06)", border: "1px solid rgba(31,111,91,0.12)",
+              borderRadius: 12, padding: "10px 14px", marginBottom: 20,
+              fontSize: 13, color: "#1f6f5b", fontWeight: 600,
+            }}
+          >
+            <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+            Loading summary…
+          </div>
+        )}
+        {summaryError && (
+          <div
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.14)",
+              borderRadius: 12, padding: "12px 16px", marginBottom: 20,
+              fontSize: 13, color: "#b91c1c", fontWeight: 500,
+            }}
+          >
+            {summaryError}
+          </div>
+        )}
         {ownerCreated && (
           <div
             style={{

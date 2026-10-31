@@ -41,18 +41,25 @@ const MOCK = {
     { id: "SUB-003", customer: "CloudFin Ltd", plan: "Brightloop ERP Core", billing: "Monthly", amount: "₹12,500", status: "Trial", nextBill: "Nov 5, 2026" },
     { id: "SUB-004", customer: "Delta Logistics", plan: "Brightloop HRM", billing: "Annual", amount: "₹32,000", status: "Suspended", nextBill: "—" },
     { id: "SUB-005", customer: "Summit School", plan: "Brightloop ERP Core", billing: "Monthly", amount: "₹12,500", status: "Active", nextBill: "Nov 12, 2026" },
+    { id: "SUB-006", customer: "Greenleaf Pvt", plan: "Brightloop ERP Pro", billing: "Monthly", amount: "₹22,000", status: "Active", nextBill: "Nov 18, 2026" },
+    { id: "SUB-007", customer: "SkyLine Infra", plan: "Brightloop Analytics", billing: "Quarterly", amount: "₹18,500", status: "Trial", nextBill: "Nov 24, 2026" },
+    { id: "SUB-008", customer: "BrightFoods Co", plan: "Brightloop POS Plus", billing: "Monthly", amount: "₹4,500", status: "Active", nextBill: "Nov 28, 2026" },
   ],
   quotes: [
     { id: "QT-2026-011", customer: "Greenleaf Pvt", plan: "Brightloop ERP Pro", value: "₹22,000/mo", status: "Draft", created: "Oct 28, 2026" },
     { id: "QT-2026-010", customer: "SkyLink Infra", plan: "Brightloop ERP Core + HRM", value: "₹15,700/mo", status: "Sent", created: "Oct 25, 2026" },
     { id: "QT-2026-009", customer: "BrightFoods Co", plan: "Brightloop POS Plus", value: "₹4,500/mo", status: "Confirmed", created: "Oct 20, 2026" },
     { id: "QT-2026-008", customer: "Alpine Tech", plan: "Brightloop ERP Pro", value: "₹22,000/mo", status: "Cancelled", created: "Oct 15, 2026" },
+    { id: "QT-2026-007", customer: "Northwind Labs", plan: "Brightloop HRM", value: "₹3,200/mo", status: "Sent", created: "Oct 12, 2026" },
+    { id: "QT-2026-006", customer: "Aster Botanics", plan: "Brightloop ERP Core", value: "₹12,500/mo", status: "Draft", created: "Oct 8, 2026" },
   ],
   invoices: [
     { id: "INV-2026-088", customer: "Acme Corp", amount: "₹22,000", due: "Nov 1, 2026", status: "Unpaid" },
     { id: "INV-2026-087", customer: "Summit School", amount: "₹12,500", due: "Oct 30, 2026", status: "Overdue" },
     { id: "INV-2026-086", customer: "Nexus Retail", amount: "₹12,000", due: "Oct 20, 2026", status: "Paid" },
     { id: "INV-2026-085", customer: "CloudFin Ltd", amount: "₹12,500", due: "Oct 15, 2026", status: "Paid" },
+    { id: "INV-2026-084", customer: "Greenleaf Pvt", amount: "₹22,000", due: "Oct 12, 2026", status: "Paid" },
+    { id: "INV-2026-083", customer: "SkyLine Infra", amount: "₹18,500", due: "Oct 10, 2026", status: "Unpaid" },
   ],
 };
 
@@ -70,8 +77,50 @@ const STATUS_PILL = {
   Overdue: "pill pill-red",
 };
 
+function formatQuotePrice(value) {
+  const number = Number(value || 0);
+  return `₹${number.toLocaleString("en-IN")}`;
+}
+
+function normalizeQuote(item) {
+  const payload = item?.payload || item || {};
+  const totalAmount = payload.total_amount ?? payload.amount ?? payload.value ?? 0;
+  const status = payload.status || "Draft";
+  return {
+    id: item?.id || payload.id || `QT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    customer: payload.customer_name || payload.customer || "Unknown customer",
+    plan: payload.plan_name || payload.plan || "Brightloop plan",
+    value: `${formatQuotePrice(totalAmount)}`,
+    status,
+    created: payload.created_at ? new Date(payload.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : payload.created || "Recently",
+  };
+}
+
+function normalizeSubscription(item) {
+  const payload = item?.payload || item || {};
+  const status = payload.status || item?.status || "Active";
+  const amount = payload.total_amount ?? payload.amount ?? 0;
+  return {
+    id: item?.id || payload.id || "SUB-unknown",
+    customer: payload.customer_name || payload.customer || "Unknown customer",
+    plan: payload.plan_name || payload.plan || "Brightloop plan",
+    billing: payload.billing_interval ? String(payload.billing_interval).charAt(0).toUpperCase() + String(payload.billing_interval).slice(1) : "Monthly",
+    amount: `₹${Number(amount).toLocaleString("en-IN")}`,
+    nextBill: payload.next_billing_date || payload.next_bill || "—",
+    status,
+  };
+}
+
+function normalizeCustomer(item) {
+  const row = normalizeSubscription(item);
+  return {
+    ...row,
+    id: row.id,
+  };
+}
+
 /* ── New Quote Modal ─────────────────────────────────────────── */
-function NewQuoteModal({ onClose }) {
+function NewQuoteModal({ onClose, onCreated }) {
   const [form, setForm] = useState({ customer: "", plan: "", billing: "Monthly", notes: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -81,7 +130,19 @@ function NewQuoteModal({ onClose }) {
   async function submit(e) {
     e.preventDefault();
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 900)); // Simulate API
+    await new Promise((r) => setTimeout(r, 900));
+    const totalAmount = (Math.random() * 15000 + 4000).toFixed(0);
+    const createdQuote = {
+      id: `QT-${Date.now()}`,
+      payload: {
+        customer_name: form.customer || "New customer",
+        plan_name: form.plan || "Brightloop plan",
+        total_amount: Number(totalAmount),
+        status: "Draft",
+        created_at: new Date().toISOString(),
+      },
+    };
+    onCreated?.(createdQuote);
     setLoading(false);
     setDone(true);
     setTimeout(onClose, 1200);
@@ -320,9 +381,9 @@ function Overview({ stats }) {
   );
 }
 
-function SubscriptionsView() {
+function SubscriptionsView({ subscriptions = [], loading = false, error = "" }) {
   const [tab, setTab] = useState("all");
-  const filtered = tab === "all" ? MOCK.subscriptions : MOCK.subscriptions.filter((s) => s.status.toLowerCase() === tab);
+  const filtered = tab === "all" ? subscriptions : subscriptions.filter((s) => s.status.toLowerCase() === tab);
 
   return (
     <div>
@@ -334,67 +395,121 @@ function SubscriptionsView() {
         ))}
       </div>
       <div className="dash-card">
-        <table className="dash-table">
-          <thead>
-            <tr>
-              <th>ID</th><th>Customer</th><th>Plan</th><th>Billing</th>
-              <th>Amount</th><th>Next Bill</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((s) => (
-              <tr key={s.id}>
-                <td style={{ fontWeight: 600, fontSize: 12.5, color: "rgba(15,28,46,0.55)" }}>{s.id}</td>
-                <td style={{ fontWeight: 600 }}>{s.customer}</td>
-                <td style={{ fontSize: 13 }}>{s.plan}</td>
-                <td><span className="pill pill-gray">{s.billing}</span></td>
-                <td style={{ fontWeight: 700 }}>{s.amount}</td>
-                <td style={{ fontSize: 13, color: "rgba(15,28,46,0.5)" }}>{s.nextBill}</td>
-                <td><span className={STATUS_PILL[s.status] || "pill pill-gray"}>{s.status}</span></td>
+        {loading && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 13, color: "#1d4ed8", fontWeight: 600 }}>
+            <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+            Loading subscriptions…
+          </div>
+        )}
+        {error && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.14)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#b91c1c", fontWeight: 500 }}>
+            {error}
+          </div>
+        )}
+        {filtered.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">
+              <ClipboardList size={22} color="rgba(15,28,46,0.3)" />
+            </div>
+            <h3 className="empty-title">No subscriptions found</h3>
+            <p className="empty-body">There are no subscriptions in this view right now.</p>
+          </div>
+        ) : (
+          <table className="dash-table">
+            <thead>
+              <tr>
+                <th>ID</th><th>Customer</th><th>Plan</th><th>Billing</th>
+                <th>Amount</th><th>Next Bill</th><th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ fontWeight: 600, fontSize: 12.5, color: "rgba(15,28,46,0.55)" }}>{s.id}</td>
+                  <td style={{ fontWeight: 600 }}>{s.customer}</td>
+                  <td style={{ fontSize: 13 }}>{s.plan}</td>
+                  <td><span className="pill pill-gray">{s.billing}</span></td>
+                  <td style={{ fontWeight: 700 }}>{s.amount}</td>
+                  <td style={{ fontSize: 13, color: "rgba(15,28,46,0.5)" }}>{s.nextBill}</td>
+                  <td><span className={STATUS_PILL[s.status] || "pill pill-gray"}>{s.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
 
-function QuotesView({ onNew }) {
+function QuotesView({ quotes = [], onNew, loading = false, error = "" }) {
   return (
     <div className="dash-card">
       <div className="section-head">
         <div>
           <h2 className="section-title">Quotations</h2>
-          <p className="section-sub">{MOCK.quotes.length} quotes issued</p>
+          <p className="section-sub">{quotes.length} quotes issued</p>
         </div>
         <button className="btn-primary" onClick={onNew}>
           <Plus size={14} />
           New Quote
         </button>
       </div>
-      <table className="dash-table">
-        <thead>
-          <tr><th>Quote ID</th><th>Customer</th><th>Plan</th><th>Value</th><th>Created</th><th>Status</th></tr>
-        </thead>
-        <tbody>
-          {MOCK.quotes.map((q) => (
-            <tr key={q.id}>
-              <td style={{ fontWeight: 600, fontSize: 13 }}>{q.id}</td>
-              <td style={{ fontWeight: 600 }}>{q.customer}</td>
-              <td style={{ fontSize: 13 }}>{q.plan}</td>
-              <td style={{ fontWeight: 700 }}>{q.value}</td>
-              <td style={{ fontSize: 13, color: "rgba(15,28,46,0.5)" }}>{q.created}</td>
-              <td><span className={STATUS_PILL[q.status] || "pill pill-gray"}>{q.status}</span></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 13, color: "#1d4ed8", fontWeight: 600 }}>
+          <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+          Loading quotes…
+        </div>
+      )}
+      {error && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.14)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#b91c1c", fontWeight: 500 }}>
+          {error}
+        </div>
+      )}
+      {quotes.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">
+            <FileText size={22} color="rgba(15,28,46,0.3)" />
+          </div>
+          <h3 className="empty-title">No quotes yet</h3>
+          <p className="empty-body">Create a new quote to start a customer proposal.</p>
+        </div>
+      ) : (
+        <table className="dash-table">
+          <thead>
+            <tr><th>Quote ID</th><th>Customer</th><th>Plan</th><th>Value</th><th>Created</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {quotes.map((q) => (
+              <tr key={q.id}>
+                <td style={{ fontWeight: 600, fontSize: 13 }}>{q.id}</td>
+                <td style={{ fontWeight: 600 }}>{q.customer}</td>
+                <td style={{ fontSize: 13 }}>{q.plan}</td>
+                <td style={{ fontWeight: 700 }}>{q.value}</td>
+                <td style={{ fontSize: 13, color: "rgba(15,28,46,0.5)" }}>{q.created}</td>
+                <td><span className={STATUS_PILL[q.status] || "pill pill-gray"}>{q.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
 
-function InvoicesView({ onRecord }) {
+function normalizeInvoice(item) {
+  const payload = item?.payload || item || {};
+  const status = payload.status || item?.status || "Draft";
+  return {
+    id: item?.id || payload.id || "INV-unknown",
+    customer: payload.customer_name || payload.customer || "Unknown customer",
+    amount: `₹${Number(payload.total_amount ?? payload.amount_due ?? payload.amount ?? 0).toLocaleString("en-IN")}`,
+    due: payload.due_date || payload.created_at || "—",
+    status,
+  };
+}
+
+function InvoicesView({ invoices = [], onRecord, loading = false, error = "" }) {
   return (
     <div className="dash-card">
       <div className="section-head">
@@ -403,34 +518,55 @@ function InvoicesView({ onRecord }) {
           <p className="section-sub">All billing records</p>
         </div>
       </div>
-      <table className="dash-table">
-        <thead>
-          <tr><th>Invoice ID</th><th>Customer</th><th>Amount</th><th>Due Date</th><th>Status</th><th></th></tr>
-        </thead>
-        <tbody>
-          {MOCK.invoices.map((i) => (
-            <tr key={i.id}>
-              <td style={{ fontWeight: 600, fontSize: 13 }}>{i.id}</td>
-              <td style={{ fontWeight: 600 }}>{i.customer}</td>
-              <td style={{ fontWeight: 700 }}>{i.amount}</td>
-              <td style={{ fontSize: 13, color: "rgba(15,28,46,0.5)" }}>{i.due}</td>
-              <td><span className={STATUS_PILL[i.status] || "pill pill-gray"}>{i.status}</span></td>
-              <td>
-                {i.status !== "Paid" && (
-                  <button className="btn-secondary" style={{ padding: "5px 12px", fontSize: 12 }} onClick={() => onRecord(i)}>
-                    Record Payment
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 13, color: "#1d4ed8", fontWeight: 600 }}>
+          <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+          Loading invoices…
+        </div>
+      )}
+      {error && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.14)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#b91c1c", fontWeight: 500 }}>
+          {error}
+        </div>
+      )}
+      {invoices.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">
+            <Receipt size={22} color="rgba(15,28,46,0.3)" />
+          </div>
+          <h3 className="empty-title">No invoices available</h3>
+          <p className="empty-body">Once billing is generated, invoice records will appear here.</p>
+        </div>
+      ) : (
+        <table className="dash-table">
+          <thead>
+            <tr><th>Invoice ID</th><th>Customer</th><th>Amount</th><th>Due Date</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            {invoices.map((i) => (
+              <tr key={i.id}>
+                <td style={{ fontWeight: 600, fontSize: 13 }}>{i.id}</td>
+                <td style={{ fontWeight: 600 }}>{i.customer}</td>
+                <td style={{ fontWeight: 700 }}>{i.amount}</td>
+                <td style={{ fontSize: 13, color: "rgba(15,28,46,0.5)" }}>{i.due}</td>
+                <td><span className={STATUS_PILL[i.status] || "pill pill-gray"}>{i.status}</span></td>
+                <td>
+                  {i.status !== "Paid" && (
+                    <button className="btn-secondary" style={{ padding: "5px 12px", fontSize: 12 }} onClick={() => onRecord(i)}>
+                      Record Payment
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
 
-function CustomersView() {
+function CustomersView({ customers = [], loading = false, error = "" }) {
   return (
     <div className="dash-card">
       <div className="section-head">
@@ -439,22 +575,43 @@ function CustomersView() {
           <p className="section-sub">Accounts assigned to you</p>
         </div>
       </div>
-      <table className="dash-table">
-        <thead>
-          <tr><th>Customer</th><th>Plan</th><th>Status</th><th>Next Bill</th><th>Amount</th></tr>
-        </thead>
-        <tbody>
-          {MOCK.subscriptions.map((s) => (
-            <tr key={s.id}>
-              <td style={{ fontWeight: 600 }}>{s.customer}</td>
-              <td style={{ fontSize: 13 }}>{s.plan}</td>
-              <td><span className={STATUS_PILL[s.status] || "pill pill-gray"}>{s.status}</span></td>
-              <td style={{ fontSize: 13, color: "rgba(15,28,46,0.5)" }}>{s.nextBill}</td>
-              <td style={{ fontWeight: 700 }}>{s.amount}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 13, color: "#1d4ed8", fontWeight: 600 }}>
+          <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+          Loading customers…
+        </div>
+      )}
+      {error && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.14)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#b91c1c", fontWeight: 500 }}>
+          {error}
+        </div>
+      )}
+      {customers.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">
+            <Users size={22} color="rgba(15,28,46,0.3)" />
+          </div>
+          <h3 className="empty-title">No customers assigned</h3>
+          <p className="empty-body">Customer subscriptions will appear here once available.</p>
+        </div>
+      ) : (
+        <table className="dash-table">
+          <thead>
+            <tr><th>Customer</th><th>Plan</th><th>Status</th><th>Next Bill</th><th>Amount</th></tr>
+          </thead>
+          <tbody>
+            {customers.map((s) => (
+              <tr key={s.id}>
+                <td style={{ fontWeight: 600 }}>{s.customer}</td>
+                <td style={{ fontSize: 13 }}>{s.plan}</td>
+                <td><span className={STATUS_PILL[s.status] || "pill pill-gray"}>{s.status}</span></td>
+                <td style={{ fontSize: 13, color: "rgba(15,28,46,0.5)" }}>{s.nextBill}</td>
+                <td style={{ fontWeight: 700 }}>{s.amount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
@@ -491,6 +648,20 @@ export default function StaffDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+  const [quotes, setQuotes] = useState(MOCK.quotes);
+  const [quotesLoading, setQuotesLoading] = useState(false);
+  const [quotesError, setQuotesError] = useState("");
+  const [customers, setCustomers] = useState(MOCK.subscriptions);
+  const [customersLoading, setCustomersLoading] = useState(false);
+  const [customersError, setCustomersError] = useState("");
+  const [subscriptions, setSubscriptions] = useState(MOCK.subscriptions);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
+  const [subscriptionsError, setSubscriptionsError] = useState("");
+  const [invoices, setInvoices] = useState(MOCK.invoices);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesError, setInvoicesError] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState(MOCK.stats);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
@@ -504,8 +675,14 @@ export default function StaffDashboard() {
           router.replace(data.redirect || "/login");
         } else {
           setUser(data.user);
+          setSummaryLoading(true);
+          setCustomersLoading(true);
+          setQuotesLoading(true);
+          setSubscriptionsLoading(true);
+          setInvoicesLoading(true);
           apiRequest("/api/v1/reports/summary")
             .then((summary) => {
+              setSummaryError("");
               setStats([
                 { ...MOCK.stats[0], value: String(summary.total_customers || 0) },
                 { ...MOCK.stats[1], value: String(summary.active_subscriptions || 0) },
@@ -513,7 +690,54 @@ export default function StaffDashboard() {
                 { ...MOCK.stats[3], value: String(summary.pending_quotes || 0) },
               ]);
             })
-            .catch(() => {});
+            .catch((error) => {
+              setSummaryError(error.message || "Unable to load staff summary right now.");
+            })
+            .finally(() => setSummaryLoading(false));
+
+          apiRequest("/api/v1/subscriptions?page_size=50")
+            .then((payload) => {
+              const items = Array.isArray(payload.items) ? payload.items : [];
+              const subscriptionRows = items.map(normalizeSubscription);
+              const customerRows = Array.from(new Map(
+                items.map((item) => [normalizeCustomer(item).customer, normalizeCustomer(item)])
+              ).values());
+              const quoteRows = items
+                .filter((item) => ["Draft", "Quotation", "Confirmed", "Sent"].includes(item?.payload?.status || item?.status || ""))
+                .map(normalizeQuote);
+              setSubscriptionsError("");
+              setSubscriptions(subscriptionRows.length > 0 ? subscriptionRows : MOCK.subscriptions);
+              setCustomersError("");
+              setCustomers(customerRows.length > 0 ? customerRows : MOCK.subscriptions);
+              setQuotesError("");
+              setQuotes(quoteRows.length > 0 ? quoteRows : MOCK.quotes);
+            })
+            .catch((error) => {
+              setSubscriptionsError(error.message || "Unable to load subscriptions right now.");
+              setSubscriptions(MOCK.subscriptions);
+              setCustomersError(error.message || "Unable to load customers right now.");
+              setCustomers(MOCK.subscriptions);
+              setQuotesError(error.message || "Unable to load quotes right now.");
+              setQuotes(MOCK.quotes);
+            })
+            .finally(() => {
+              setSubscriptionsLoading(false);
+              setCustomersLoading(false);
+              setQuotesLoading(false);
+            });
+
+          apiRequest("/api/v1/invoices?page_size=50")
+            .then((payload) => {
+              const rows = Array.isArray(payload.items) ? payload.items : [];
+              const invoiceRows = rows.map(normalizeInvoice);
+              setInvoicesError("");
+              setInvoices(invoiceRows.length > 0 ? invoiceRows : MOCK.invoices);
+            })
+            .catch((error) => {
+              setInvoicesError(error.message || "Unable to load invoices right now.");
+              setInvoices(MOCK.invoices);
+            })
+            .finally(() => setInvoicesLoading(false));
         }
       })
       .catch(() => router.replace("/login"))
@@ -532,10 +756,10 @@ export default function StaffDashboard() {
   function renderView() {
     switch (activeTab) {
       case "overview": return <Overview stats={stats} />;
-      case "customers": return <CustomersView />;
-      case "subscriptions": return <SubscriptionsView />;
-      case "quotes": return <QuotesView onNew={() => setShowQuoteModal(true)} />;
-      case "invoices": return <InvoicesView onRecord={setPayInvoice} />;
+      case "customers": return <CustomersView customers={customers} loading={customersLoading} error={customersError} />;
+      case "subscriptions": return <SubscriptionsView subscriptions={subscriptions} loading={subscriptionsLoading} error={subscriptionsError} />;
+      case "quotes": return <QuotesView quotes={quotes} onNew={() => setShowQuoteModal(true)} loading={quotesLoading} error={quotesError} />;
+      case "invoices": return <InvoicesView invoices={invoices} onRecord={setPayInvoice} loading={invoicesLoading} error={invoicesError} />;
       default: return <Overview stats={stats} />;
     }
   }
@@ -555,10 +779,26 @@ export default function StaffDashboard() {
           </span>
         }
       >
+        {summaryLoading && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(29,78,216,0.06)", border: "1px solid rgba(29,78,216,0.12)", borderRadius: 12, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#1d4ed8", fontWeight: 600 }}>
+            <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+            Loading summary…
+          </div>
+        )}
+        {summaryError && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.14)", borderRadius: 12, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#b91c1c", fontWeight: 500 }}>
+            {summaryError}
+          </div>
+        )}
         {renderView()}
       </DashboardShell>
 
-      {showQuoteModal && <NewQuoteModal onClose={() => setShowQuoteModal(false)} />}
+      {showQuoteModal && (
+        <NewQuoteModal
+          onClose={() => setShowQuoteModal(false)}
+          onCreated={(newQuote) => setQuotes((current) => [normalizeQuote(newQuote), ...current])}
+        />
+      )}
       {payInvoice && <RecordPaymentModal invoice={payInvoice} onClose={() => setPayInvoice(null)} />}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
