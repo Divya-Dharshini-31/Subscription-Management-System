@@ -422,6 +422,7 @@ export default function AdminDashboard() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [stats, setStats] = useState(MOCK.stats);
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [ownerCreated, setOwnerCreated] = useState(false);
 
@@ -432,6 +433,16 @@ export default function AdminDashboard() {
           router.replace(data.redirect || "/login");
         } else {
           setUser(data.user);
+          apiRequest("/api/v1/reports/summary")
+            .then((summary) => {
+              setStats([
+                { ...MOCK.stats[0], value: `₹${Number(summary.revenue_collected || 0).toLocaleString("en-IN")}` },
+                { ...MOCK.stats[1], value: String(summary.active_subscriptions || 0) },
+                { ...MOCK.stats[2], value: String(summary.total_customers || 0) },
+                { ...MOCK.stats[3], value: String(summary.overdue_invoices || 0) },
+              ]);
+            })
+            .catch(() => {});
         }
       })
       .catch(() => router.replace("/login"))
@@ -451,13 +462,13 @@ export default function AdminDashboard() {
 
   function renderView() {
     switch (activeTab) {
-      case "overview": return <Overview stats={MOCK.stats} />;
+      case "overview": return <Overview stats={stats} />;
       case "customers": return <CustomersView />;
       case "products": return <ProductsView />;
       case "staff": return <StaffView onAddStaff={() => setShowOwnerModal(true)} />;
       case "reports": return <ReportsView />;
       case "settings": return <SettingsView />;
-      default: return <Overview stats={MOCK.stats} />;
+      default: return <Overview stats={stats} />;
     }
   }
 

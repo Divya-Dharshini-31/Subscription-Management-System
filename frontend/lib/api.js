@@ -24,6 +24,7 @@ export async function apiRequest(path, { method = "GET", body } = {}) {
 
 export function roleLabel(role) {
   if (role === "ADMIN") return "Administrator";
+  if (role === "INTERNAL") return "Staff";
   if (role === "PRODUCT_OWNER") return "Product owner";
   return "Customer";
 }
@@ -34,6 +35,9 @@ export function roleCopy(role) {
   }
   if (role === "PRODUCT_OWNER") {
     return "You have access to product-owner operations. Customer data stays scoped to your work.";
+  }
+  if (role === "INTERNAL") {
+    return "You have access to staff operations. Customer data is protected by server-side permissions.";
   }
   return "You can view and manage your own account information only.";
 }
