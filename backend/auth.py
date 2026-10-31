@@ -55,18 +55,40 @@ def send_reset_email(user, raw_token):
         current_app.logger.info("Password reset link for %s: %s", user.email, reset_url)
         return
 
+    # Validate SMTP configuration for Gmail
+    smtp_user = current_app.config.get("SMTP_USER", "").strip()
+    smtp_password = current_app.config.get("SMTP_PASSWORD", "")
+    smtp_from = current_app.config.get("SMTP_FROM", "").strip()
+    
+    if not smtp_user or not smtp_password:
+        current_app.logger.warning(
+            "SMTP_HOST configured but SMTP_USER or SMTP_PASSWORD missing. "
+            "Password reset link for %s: %s", user.email, reset_url
+        )
+        return
+
+    if not smtp_from:
+        smtp_from = smtp_user  # Use SMTP_USER as default FROM address
+
     message = EmailMessage()
     message["Subject"] = subject
-    message["From"] = current_app.config["SMTP_FROM"]
+    message["From"] = smtp_from
     message["To"] = user.email
     message.set_content(body)
 
-    with smtplib.SMTP(smtp_host, current_app.config["SMTP_PORT"]) as smtp:
-        if current_app.config["SMTP_USE_TLS"]:
-            smtp.starttls()
-        if current_app.config["SMTP_USER"]:
-            smtp.login(current_app.config["SMTP_USER"], current_app.config["SMTP_PASSWORD"])
-        smtp.send_message(message)
+    try:
+        with smtplib.SMTP(smtp_host, current_app.config["SMTP_PORT"], timeout=30) as smtp:
+            if current_app.config.get("SMTP_USE_TLS", True):
+                smtp.starttls()
+            smtp.login(smtp_user, smtp_password)
+            smtp.send_message(message)
+        current_app.logger.info("Password reset email sent to %s", user.email)
+    except smtplib.SMTPAuthenticationError as e:
+        current_app.logger.error("SMTP authentication failed for %s: %s", smtp_user, str(e))
+        raise
+    except Exception as e:
+        current_app.logger.error("Failed to send email to %s: %s", user.email, str(e))
+        raise
 
 
 @auth_bp.post("/register")

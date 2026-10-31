@@ -182,3 +182,108 @@ def test_role_protection_admin_customer_product_owner(client, app):
     created = client.post("/api/auth/product-owners", json=payload)
     assert created.status_code == 201
     assert created.get_json()["user"]["role"] == "PRODUCT_OWNER"
+
+def test_forgot_password_with_missing_smtp_credentials(client, app, monkeypatch, caplog):
+    """Test that forgot password works even when SMTP_HOST is set but credentials are missing"""
+    register(client)
+    
+    # Temporarily configure app with SMTP_HOST but no credentials
+    original_config = dict(app.config)
+    app.config.update({
+        'SMTP_HOST': 'smtp.gmail.com',
+        'SMTP_USER': '',
+        'SMTP_PASSWORD': '',
+        'SMTP_FROM': '',
+        'SMTP_PORT': 587,
+        'SMTP_USE_TLS': True
+    })
+    
+    try:
+        # Use caplog to capture logs
+        import logging
+        caplog.set_level(logging.WARNING)
+        
+        response = client.post(
+            "/api/auth/forgot-password",
+            json={"email": "customer@example.com"},
+        )
+        
+        # Should still return success (but log warning)
+        assert response.status_code == 200
+        assert "If that email is registered" in response.get_json()["message"]
+        
+        # Check that warning was logged
+        warning_logged = any(
+            "SMTP_HOST configured but SMTP_USER or SMTP_PASSWORD missing" in record.message
+            for record in caplog.records
+        )
+        assert warning_logged, "Expected warning about missing SMTP credentials"
+        
+    finally:
+        # Restore original config
+        app.config.update(original_config)
+
+
+def test_forgot_password_smtp_authentication_error(client, app, monkeypatch):
+    """Test that SMTP authentication errors are properly handled"""
+    register(client)
+    
+    def mock_smtp_auth_error(*args, **kwargs):
+        import smtplib
+        raise smtplib.SMTPAuthenticationError(535, b'5.7.8 Authentication credentials invalid')
+    
+    # Mock send_reset_email to raise authentication error
+    monkeypatch.setattr("auth.send_reset_email", mock_smtp_auth_error)
+    
+    response = client.post(
+        "/api/auth/forgot-password",
+        json={"email": "customer@example.com"},
+    )
+    
+    # Should return 500 error when email sending fails
+    assert response.status_code == 500
+    assert "Could not send the reset email" in response.get_json()["error"]
+
+
+def test_forgot_password_smtp_success_with_credentials(client, app, monkeypatch):
+    """Test successful email sending when SMTP credentials are provided"""
+    register(client)
+    
+    captured_email = {}
+    
+    def mock_successful_send(user, raw_token):
+        # Store user email instead of user object to avoid detached instance issues
+        captured_email['user_email'] = user.email
+        captured_email['token'] = raw_token
+        captured_email['sent'] = True
+    
+    # Mock send_reset_email
+    monkeypatch.setattr("auth.send_reset_email", mock_successful_send)
+    
+    # Configure app with SMTP credentials
+    original_config = dict(app.config)
+    app.config.update({
+        'SMTP_HOST': 'smtp.gmail.com',
+        'SMTP_USER': 'test@gmail.com',
+        'SMTP_PASSWORD': 'valid-password',
+        'SMTP_FROM': 'test@gmail.com',
+        'SMTP_PORT': 587,
+        'SMTP_USE_TLS': True
+    })
+    
+    try:
+        response = client.post(
+            "/api/auth/forgot-password",
+            json={"email": "customer@example.com"},
+        )
+        
+        # Should return success
+        assert response.status_code == 200
+        assert "If that email is registered" in response.get_json()["message"]
+        assert captured_email['sent'] == True
+        assert captured_email['user_email'] == "customer@example.com"
+        assert captured_email['token'] is not None
+        
+    finally:
+        # Restore original config
+        app.config.update(original_config)
